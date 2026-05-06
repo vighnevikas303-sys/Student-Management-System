@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marks - SMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .progress-bar { background:#e2e8f0; border-radius:20px; height:7px; overflow:hidden; width:80px; display:inline-block; vertical-align:middle; }
+  .progress-fill { height:100%; border-radius:20px; }
+  .marks-input { width:65px; padding:5px 8px; border:1.5px solid #e2e8f0; border-radius:6px; font-size:13px; font-family:'Inter',sans-serif; text-align:center; outline:none; }
+  .marks-input:focus { border-color:#3b82f6; }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a class="navbar-brand" href="index.html">Student <span>Management</span> System</a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="students.html">Students</a></li>
+    <li><a href="attendance.html">Attendance</a></li>
+    <li><a href="marks.html" class="active">Marks</a></li>
+    <li><a href="fee.html">Fee</a></li>
+    <li><button class="btn-logout" onclick="window.location='login.html'">Logout</button></li>
+  </ul>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Marks Management</div>
+      <div class="breadcrumb"><a href="index.html">Home</a> &rsaquo; Marks</div>
+    </div>
+    <button class="btn btn-primary" onclick="openAddMarksModal()">+ Add Marks</button>
+  </div>
+
+  <div class="card">
+    <div class="filter-row">
+      <input class="search-box" type="text" id="search-student" placeholder="Search student...">
+      <select id="filter-semester" onchange="loadMarks()">
+        <option value="">All Semesters</option>
+        <option>Semester 1</option><option>Semester 2</option>
+        <option>Semester 3</option><option>Semester 4</option>
+         <option>Semester 5</option><option>Semester 6</option>
+        <option>Semester 7</option><option>Semester 8</option>
+      </select>
+      <select id="filter-subject" onchange="loadMarks()">
+        <option value="">All Subjects</option>
+        <option>DBMS</option><option>IOT</option>
+        <option>SPOS</option><option>TOC</option><option>JAVA</option>
+      </select>
+      <button class="btn btn-primary" onclick="loadMarks()">Filter</button>
+    </div>
+    <div id="marks-table"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ADD MARKS MODAL -->
+<div class="modal-overlay" id="marks-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Add Marks</span>
+      <button class="modal-close" onclick="closeModal('marks-modal')">&times;</button>
+    </div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="form-group">
+        <label>Student *</label>
+        <select id="m-student"><option value="">Select Student</option></select>
+      </div>
+      <div class="form-group">
+        <label>Subject *</label>
+        <select id="m-subject">
+          <option value="">IoT</option>
+          <option>SPOS</option><option>DBMS</option>
+          <option>CNS</option><option>Computer Science</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Marks (out of 100) *</label>
+        <input type="number" id="m-marks" min="0" max="100" placeholder="0-100">
+      </div>
+      <div class="form-group">
+        <label>Semester</label>
+        <select id="m-semester">
+          <option>Semester 1</option><option>Semester 2</option>
+          <option>Semester 3</option><option>Semester 4</option>
+                    <option>Semester 5</option><option>Semester 6</option>
+          <option>Semester 7</option><option>Semester 8</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Exam Type</label>
+        <select id="m-examtype">
+          <option>Internal</option><option>External</option><option>Final</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('marks-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMarks()">Save Marks</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="api.js"></script>
+<script>
+  let allMarks = [];
+  let allStudents = [];
+
+  function getGradeColor(grade) {
+    if (!grade) return '#94a3b8';
+    if (grade === 'A+' || grade === 'A') return '#15803d';
+    if (grade === 'B') return '#1e40af';
+    if (grade === 'C' || grade === 'D') return '#b45309';
+    return '#b91c1c';
+  }
+
+  function getProgressColor(pct) {
+    if (pct >= 75) return '#16a34a';
+    if (pct >= 60) return '#2563eb';
+    if (pct >= 40) return '#d97706';
+    if (pct >= 28) return '#d97706';
+    return '#dc2626';
+  }
+
+  async function loadMarks() {
+    const search   = document.getElementById('search-student').value.trim().toLowerCase();
+    const semester = document.getElementById('filter-semester').value;
+    const subject  = document.getElementById('filter-subject').value;
+    document.getElementById('marks-table').innerHTML = '<div class="spinner"></div>';
+    try {
+      allMarks    = await apiCall('/marks');
+      allStudents = await apiCall('/students');
+
+      let data = allMarks;
+      if (semester) data = data.filter(m => m.semester === semester);
+      if (subject)  data = data.filter(m => m.subject === subject);
+      if (search)   data = data.filter(m => {
+        const name = (m.student?.firstName + ' ' + m.student?.lastName).toLowerCase();
+        return name.includes(search);
+      });
+      renderMarksTable(data);
+    } catch(e) { showToast('Error loading marks', 'error'); }
+  }
+
+  function renderMarksTable(data) {
+    document.getElementById('marks-table').innerHTML = data.length ? `
+      <table>
+        <thead><tr>
+          <th>#</th><th>Student</th><th>Subject</th><th>Semester</th>
+          <th>Marks</th><th>Percentage</th><th>Grade</th><th>Result</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${data.map(m => {
+            const pct   = m.marks || 0;
+            const color = getProgressColor(pct);
+            const pass  = pct >= 40;
+            return `<tr>
+              <td>${m.id}</td>
+              <td>${m.student?.firstName || ''} ${m.student?.lastName || ''}</td>
+              <td>${m.subject || '-'}</td>
+              <td>${m.semester || '-'}</td>
+              <td><strong>${m.marks}</strong> / ${m.maxMarks || 100}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${color}"></div></div>
+                  <span>${pct}%</span>
+                </div>
+              </td>
+              <td><span class="badge" style="background:${color}22;color:${color}">${m.grade || '-'}</span></td>
+              <td><span class="badge ${pass ? 'badge-success' : 'badge-danger'}">${pass ? 'Pass' : 'Fail'}</span></td>
+              <td>
+                <button class="link-btn danger" onclick="deleteMarks(${m.id})">Delete</button>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>` : '<div class="empty-state">No marks records found.</div>';
+  }
+
+  async function openAddMarksModal() {
+    const students = await apiCall('/students');
+    const sel = document.getElementById('m-student');
+    sel.innerHTML = '<option value="">Select Student</option>' +
+      students.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName} (${s.rollNumber || s.id})</option>`).join('');
+    openModal('marks-modal');
+  }
+
+  async function saveMarks() {
+    const studentId = document.getElementById('m-student').value;
+    const subject   = document.getElementById('m-subject').value;
+    const marks     = parseInt(document.getElementById('m-marks').value);
+    const semester  = document.getElementById('m-semester').value;
+    const examType  = document.getElementById('m-examtype').value;
+
+    if (!studentId || !subject || isNaN(marks)) {
+      return showToast('Please fill all required fields', 'error');
+    }
+    if (marks < 0 || marks > 100) return showToast('Marks must be 0-100', 'error');
+
+    try {
+      await apiCall('/marks', 'POST', {
+        student: { id: parseInt(studentId) },
+        subject, marks, semester, examType, maxMarks: 100
+      });
+      showToast('Marks saved successfully');
+      closeModal('marks-modal');
+      loadMarks();
+    } catch(e) { showToast('Error saving marks: ' + e.message, 'error'); }
+  }
+
+  async function deleteMarks(id) {
+    if (!confirm('Delete this marks record?')) return;
+    try {
+      await apiCall('/marks/' + id, 'DELETE');
+      showToast('Marks deleted');
+      loadMarks();
+    } catch(e) { showToast('Error deleting marks', 'error'); }
+  }
+
+  document.getElementById('search-student').addEventListener('keyup', e => {
+    if (e.key === 'Enter') loadMarks();
+  });
+
+  loadMarks();
+</script>
+</body>
+</html>

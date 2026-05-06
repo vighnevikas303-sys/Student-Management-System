@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login - SMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:#eff6ff; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+  .card { background:#fff; border-radius:16px; box-shadow:0 4px 24px rgba(30,64,175,0.10); padding:40px 44px; width:420px; }
+  .brand { text-align:center; margin-bottom:28px; }
+  .brand-icon { width:52px; height:52px; background:#1e40af; border-radius:12px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+  .brand-icon span { color:#fff; font-size:22px; font-weight:700; font-family:'Poppins',sans-serif; }
+  .brand h1 { font-family:'Poppins',sans-serif; font-size:18px; font-weight:700; color:#1e293b; }
+  .brand p  { font-size:13px; color:#64748b; margin-top:4px; }
+  .form-group { margin-bottom:18px; }
+  label { font-size:13px; font-weight:500; color:#374151; display:block; margin-bottom:6px; }
+  input, select { width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:'Inter',sans-serif; color:#1e293b; background:#f8fafc; outline:none; transition:border 0.2s; }
+  input:focus, select:focus { border-color:#3b82f6; background:#fff; }
+  .btn-login { width:100%; padding:12px; background:#1e40af; color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:600; font-family:'Poppins',sans-serif; cursor:pointer; margin-top:4px; transition:background 0.2s; }
+  .btn-login:hover { background:#1d4ed8; }
+  .btn-login:disabled { background:#93c5fd; cursor:not-allowed; }
+  .error-msg { background:#fee2e2; color:#b91c1c; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; display:none; border-left:3px solid #b91c1c; }
+  .loading-msg { background:#dbeafe; color:#1e40af; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; display:none; text-align:center; }
+  footer { color:#94a3b8; font-size:12px; margin-top:24px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-icon"><span>S</span></div>
+      <h1>Student Management System</h1>
+      <p>Sign in to your account</p>
+    </div>
+
+    <!-- Error Message -->
+    <div class="error-msg" id="error-msg">Invalid username or password.</div>
+
+    <!-- Loading Message -->
+    <div class="loading-msg" id="loading-msg">Signing in please wait...</div>
+
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="username" placeholder="Enter username" value="admin">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="Enter password" value="admin123">
+    </div>
+    <div class="form-group">
+      <label>Login As</label>
+      <select id="role">
+        <option>Admin</option>
+        <option>Teacher</option>
+        <option>Student</option>
+      </select>
+    </div>
+    <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In</button>
+  </div>
+  <footer>&copy; 2026 Student Management System</footer>
+
+<script>
+  async function doLogin() {
+    const u = document.getElementById('username').value.trim();
+    const p = document.getElementById('password').value.trim();
+
+    document.getElementById('error-msg').style.display  = 'none';
+    document.getElementById('loading-msg').style.display = 'none';
+
+    // Basic validation
+    if (!u || !p) {
+      document.getElementById('error-msg').textContent   = 'Please enter username and password.';
+      document.getElementById('error-msg').style.display = 'block';
+      return;
+    }
+
+    document.getElementById('loading-msg').style.display = 'block';
+    document.getElementById('login-btn').disabled        = true;
+
+    try {
+      const credentials = btoa(u + ':' + p);
+
+      const res = await fetch('http://localhost:8081/api/students', {
+        method: 'GET',
+        headers: {
+          'Authorization': 'Basic ' + credentials,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (res.ok) {
+        sessionStorage.setItem('sms-user', JSON.stringify({
+          username: u,
+          password: p,
+          role: document.getElementById('role').value
+        }));
+
+        window.location.href = 'index.html';
+
+      } else if (res.status === 401) {
+        document.getElementById('error-msg').textContent   = 'Invalid username or password.';
+        document.getElementById('error-msg').style.display = 'block';
+
+      } else {
+        document.getElementById('error-msg').textContent   = 'Something went wrong. Try again.';
+        document.getElementById('error-msg').style.display = 'block';
+      }
+
+    } catch (e) {
+      document.getElementById('error-msg').textContent   = 'Cannot connect to server. Make sure Spring Boot is running.';
+      document.getElementById('error-msg').style.display = 'block';
+
+    } finally {
+      document.getElementById('loading-msg').style.display = 'none';
+      document.getElementById('login-btn').disabled        = false;
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+
+  if (sessionStorage.getItem('sms-user')) {
+    window.location.href = 'index.html';
+  }
+</script>
+</body>
+</html>

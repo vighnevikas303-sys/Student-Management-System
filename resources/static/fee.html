@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fee - SMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="navbar">
+  <a class="navbar-brand" href="index.html">Student <span>Management</span> System</a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="students.html">Students</a></li>
+    <li><a href="attendance.html">Attendance</a></li>
+    <li><a href="marks.html">Marks</a></li>
+    <li><a href="fee.html" class="active">Fee</a></li>
+    <li><button class="btn-logout" onclick="window.location='login.html'">Logout</button></li>
+  </ul>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Fee Management</div>
+      <div class="breadcrumb"><a href="index.html">Home</a> &rsaquo; Fee</div>
+    </div>
+    <button class="btn btn-primary" onclick="openAddFeeModal()">+ Add Fee Entry</button>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-label">Total Collected</div>
+      <div class="stat-value" id="stat-collected" style="font-size:20px">--</div>
+      <div class="stat-sub">This year</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Paid Students</div>
+      <div class="stat-value" id="stat-paid">--</div>
+      <div class="stat-sub">Fully paid</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Pending Amount</div>
+      <div class="stat-value" id="stat-pending" style="font-size:20px">--</div>
+      <div class="stat-sub">Overdue</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Partial Payment</div>
+      <div class="stat-value" id="stat-partial">--</div>
+      <div class="stat-sub">Students</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Fee Records</span>
+    </div>
+    <div class="filter-row">
+      <input class="search-box" type="text" id="search-fee" placeholder="Search student...">
+      <select id="filter-status" onchange="loadFees()">
+        <option value="">All Status</option>
+        <option>Paid</option><option>Pending</option><option>Partial</option>
+      </select>
+      <button class="btn btn-primary" onclick="loadFees()">Filter</button>
+    </div>
+    <div id="fee-table"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ADD FEE MODAL -->
+<div class="modal-overlay" id="fee-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="fee-modal-title">Add Fee Entry</span>
+      <button class="modal-close" onclick="closeModal('fee-modal')">&times;</button>
+    </div>
+    <div class="form-grid" style="margin-bottom:16px">
+      <div class="form-group">
+        <label>Student *</label>
+        <select id="f-student"><option value="">Select Student</option></select>
+      </div>
+      <div class="form-group">
+        <label>Academic Year</label>
+        <input type="text" id="f-acyear" placeholder="2025-26" value="2025-26">
+      </div>
+      <div class="form-group">
+        <label>Total Amount (₹) *</label>
+        <input type="number" id="f-total" placeholder="e.g. 60000">
+      </div>
+      <div class="form-group">
+        <label>Paid Amount (₹)</label>
+        <input type="number" id="f-paid" placeholder="e.g. 30000" value="0">
+      </div>
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" id="f-due">
+      </div>
+      <div class="form-group">
+        <label>Payment Date</label>
+        <input type="date" id="f-paydate">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('fee-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFee()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- UPDATE FEE MODAL -->
+<div class="modal-overlay" id="update-fee-modal">
+  <div class="modal" style="width:420px">
+    <div class="modal-header">
+      <span class="modal-title">Update Payment</span>
+      <button class="modal-close" onclick="closeModal('update-fee-modal')">&times;</button>
+    </div>
+    <input type="hidden" id="uf-id">
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Paid Amount (₹) *</label>
+      <input type="number" id="uf-paid" placeholder="Enter paid amount">
+    </div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label>Payment Date</label>
+      <input type="date" id="uf-paydate">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('update-fee-modal')">Cancel</button>
+      <button class="btn btn-success" onclick="updatePayment()">Update Payment</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="api.js"></script>
+<script>
+  let allFees = [];
+
+  async function loadFeeSummary() {
+    try {
+      const summary = await apiCall('/fee/summary');
+      document.getElementById('stat-collected').textContent = formatCurrency(summary.totalCollected);
+      document.getElementById('stat-pending').textContent   = formatCurrency(summary.totalPending);
+      document.getElementById('stat-paid').textContent      = summary.paidCount || 0;
+      document.getElementById('stat-partial').textContent   = summary.partialCount || 0;
+    } catch(e) { console.error(e); }
+  }
+
+  async function loadFees() {
+    const search = document.getElementById('search-fee').value.trim().toLowerCase();
+    const status = document.getElementById('filter-status').value;
+    document.getElementById('fee-table').innerHTML = '<div class="spinner"></div>';
+    try {
+      allFees = await apiCall('/fee');
+      let data = allFees;
+      if (status) data = data.filter(f => f.status === status);
+      if (search) data = data.filter(f => {
+        const name = (f.student?.firstName + ' ' + f.student?.lastName).toLowerCase();
+        return name.includes(search) || (f.student?.rollNumber || '').toLowerCase().includes(search);
+      });
+      renderFeeTable(data);
+    } catch(e) { showToast('Error loading fees', 'error'); }
+  }
+
+  function renderFeeTable(data) {
+    document.getElementById('fee-table').innerHTML = data.length ? `
+      <table>
+        <thead><tr>
+          <th>#</th><th>Student</th><th>Course</th><th>Total Fee</th>
+          <th>Paid</th><th>Balance</th><th>Due Date</th><th>Status</th><th>Actions</th>
+        </tr></thead>
+        <tbody>
+          ${data.map(f => `
+            <tr>
+              <td>${f.id}</td>
+              <td><strong>${f.student?.firstName || ''} ${f.student?.lastName || ''}</strong></td>
+              <td>${f.student?.course || '-'}</td>
+              <td>${formatCurrency(f.totalAmount)}</td>
+              <td>${formatCurrency(f.paidAmount)}</td>
+              <td><strong style="color:${f.balance > 0 ? '#b91c1c' : '#15803d'}">${formatCurrency(f.balance)}</strong></td>
+              <td>${f.dueDate || '-'}</td>
+              <td>${statusBadge(f.status)}</td>
+              <td>
+                ${f.status !== 'Paid' ? `<button class="link-btn" onclick="openUpdateModal(${f.id})">Pay Now</button>` : ''}
+                <button class="link-btn danger" onclick="deleteFee(${f.id})">Delete</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>` : '<div class="empty-state">No fee records found.</div>';
+  }
+
+  async function openAddFeeModal() {
+    const students = await apiCall('/students');
+    const sel = document.getElementById('f-student');
+    sel.innerHTML = '<option value="">Select Student</option>' +
+      students.map(s => `<option value="${s.id}">${s.firstName} ${s.lastName} (${s.rollNumber || s.id})</option>`).join('');
+    document.getElementById('f-total').value   = '';
+    document.getElementById('f-paid').value    = '0';
+    document.getElementById('f-due').value     = '';
+    document.getElementById('f-paydate').value = '';
+    openModal('fee-modal');
+  }
+
+  async function saveFee() {
+    const studentId = document.getElementById('f-student').value;
+    const total     = parseFloat(document.getElementById('f-total').value);
+    const paid      = parseFloat(document.getElementById('f-paid').value) || 0;
+    if (!studentId || isNaN(total)) return showToast('Student and total amount are required', 'error');
+    try {
+      await apiCall('/fee', 'POST', {
+        student:      { id: parseInt(studentId) },
+        totalAmount:  total,
+        paidAmount:   paid,
+        dueDate:      document.getElementById('f-due').value,
+        paymentDate:  document.getElementById('f-paydate').value,
+        academicYear: document.getElementById('f-acyear').value,
+      });
+      showToast('Fee entry saved');
+      closeModal('fee-modal');
+      loadFees();
+      loadFeeSummary();
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  }
+
+  function openUpdateModal(id) {
+    const fee = allFees.find(f => f.id === id);
+    if (!fee) return;
+    document.getElementById('uf-id').value      = id;
+    document.getElementById('uf-paid').value    = fee.paidAmount || 0;
+    document.getElementById('uf-paydate').value = new Date().toISOString().split('T')[0];
+    openModal('update-fee-modal');
+  }
+
+  async function updatePayment() {
+    const id      = document.getElementById('uf-id').value;
+    const fee     = allFees.find(f => f.id == id);
+    const newPaid = parseFloat(document.getElementById('uf-paid').value);
+    if (isNaN(newPaid)) return showToast('Enter valid amount', 'error');
+    try {
+      await apiCall('/fee/' + id, 'PUT', {
+        ...fee,
+        student:     { id: fee.student.id },
+        paidAmount:  newPaid,
+        paymentDate: document.getElementById('uf-paydate').value,
+      });
+      showToast('Payment updated');
+      closeModal('update-fee-modal');
+      loadFees();
+      loadFeeSummary();
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  }
+
+  async function deleteFee(id) {
+    if (!confirm('Delete this fee record?')) return;
+    try {
+      await apiCall('/fee/' + id, 'DELETE');
+      showToast('Fee record deleted');
+      loadFees();
+      loadFeeSummary();
+    } catch(e) { showToast('Error deleting fee', 'error'); }
+  }
+
+  document.getElementById('search-fee').addEventListener('keyup', e => {
+    if (e.key === 'Enter') loadFees();
+  });
+
+  loadFees();
+  loadFeeSummary();
+</script>
+</body>
+</html>

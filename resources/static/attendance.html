@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance - SMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .att-btn {
+    padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600"src/main/resources/static/api.js";
+    cursor: pointer; border: 1.5px solid transparent; transition: all 0.15s;
+    font-family: 'Inter', sans-serif; margin-right: 4px;
+  }
+  .att-btn.present { background: #dcfce7; color: #15803d; border-color: #86efac; }
+  .att-btn.absent  { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+  .att-btn.leave   { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
+  .att-btn.active-present { background: #15803d; color: #fff; border-color: #15803d; }
+  .att-btn.active-absent  { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+  .att-btn.active-leave   { background: #b45309; color: #fff; border-color: #b45309; }
+</style>
+</head>
+<body>
+<nav class="navbar">
+  <a class="navbar-brand" href="index.html">Student <span>Management</span> System</a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="students.html">Students</a></li>
+    <li><a href="attendance.html" class="active">Attendance</a></li>
+    <li><a href="marks.html">Marks</a></li>
+    <li><a href="fee.html">Fee</a></li>
+    <li><button class="btn-logout" onclick="window.location='login.html'">Logout</button></li>
+  </ul>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Attendance Management</div>
+      <div class="breadcrumb"><a href="index.html">Home</a> &rsaquo; Attendance</div>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-label">Total Students</div>
+      <div class="stat-value" id="stat-total">--</div>
+      <div class="stat-sub">Enrolled</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Present</div>
+      <div class="stat-value" id="stat-present">--</div>
+      <div class="stat-sub" id="stat-date">Today</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Absent</div>
+      <div class="stat-value" id="stat-absent">--</div>
+      <div class="stat-sub">Today</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">On Leave</div>
+      <div class="stat-value" id="stat-leave">--</div>
+      <div class="stat-sub">Today</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Mark Attendance</span>
+      <button class="btn btn-success" onclick="saveAllAttendance()">Save All</button>
+    </div>
+    <div class="filter-row">
+      <label>Date:</label>
+      <input type="date" id="att-date">
+      <select id="att-course" onchange="loadAttendance()">
+        <option value="">All Courses</option>
+        <option>M.E</option><option>BCA</option><option>MBA</option>
+        <option>B.Sc</option><option>B.Com</option>        <option>B.E.</option>
+      </select>
+      <button class="btn btn-primary" onclick="loadAttendance()">Load</button>
+      <button class="btn btn-secondary" onclick="markAll('Present')">Mark All Present</button>
+      <button class="btn btn-secondary" onclick="markAll('Absent')">Mark All Absent</button>
+    </div>
+    <div id="attendance-table"><div class="empty-state">Select a date and click Load</div></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="api.js"></script>
+<script>
+  let students = [];
+  let attendanceMap = {}; // studentId -> status
+
+  // Set today's date
+  const todayStr = new Date().toISOString().split('T')[0];
+  document.getElementById('att-date').value = todayStr;
+
+  async function loadAttendance() {
+    const date   = document.getElementById('att-date').value;
+    const course = document.getElementById('att-course').value;
+    if (!date) return showToast('Please select a date', 'error');
+    document.getElementById('attendance-table').innerHTML = '<div class="spinner"></div>';
+    document.getElementById('stat-date').textContent = date;
+    try {
+      let [allStudents, existing] = await Promise.all([
+        apiCall('/students'),
+        apiCall('/attendance/date/' + date)
+      ]);
+
+      if (course) allStudents = allStudents.filter(s => s.course === course);
+      students = allStudents;
+
+      // Build map of existing attendance
+      attendanceMap = {};
+      existing.forEach(a => { attendanceMap[a.student.id] = a.status; });
+
+      // Update stats
+      document.getElementById('stat-total').textContent   = allStudents.length;
+      document.getElementById('stat-present').textContent = existing.filter(a => a.status === 'Present').length;
+      document.getElementById('stat-absent').textContent  = existing.filter(a => a.status === 'Absent').length;
+      document.getElementById('stat-leave').textContent   = existing.filter(a => a.status === 'Leave').length;
+
+      renderAttendanceTable();
+    } catch(e) { showToast('Error loading data', 'error'); }
+  }
+
+  function renderAttendanceTable() {
+    if (!students.length) {
+      document.getElementById('attendance-table').innerHTML = '<div class="empty-state">No students found.</div>';
+      return;
+    }
+    document.getElementById('attendance-table').innerHTML = `
+      <table>
+        <thead><tr>
+          <th>#</th><th>Roll No</th><th>Student Name</th>
+          <th>Course</th><th>Class</th><th>Mark Attendance</th><th>Current Status</th>
+        </tr></thead>
+        <tbody id="att-tbody">
+          ${students.map(s => {
+            const status = attendanceMap[s.id] || '';
+            return `<tr id="row-${s.id}">
+              <td>${s.id}</td>
+              <td>${s.rollNumber || '-'}</td>
+              <td><strong>${s.firstName} ${s.lastName}</strong></td>
+              <td>${s.course || '-'}</td>
+              <td>${s.className || '-'}</td>
+              <td>
+                <button class="att-btn present ${status==='Present'?'active-present':''}" onclick="setStatus(${s.id},'Present',this)">Present</button>
+                <button class="att-btn absent ${status==='Absent'?'active-absent':''}"   onclick="setStatus(${s.id},'Absent',this)">Absent</button>
+                <button class="att-btn leave ${status==='Leave'?'active-leave':''}"      onclick="setStatus(${s.id},'Leave',this)">Leave</button>
+              </td>
+              <td id="status-${s.id}">${status ? statusBadge(status) : '<span style="color:#94a3b8">Not marked</span>'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  }
+
+  function setStatus(studentId, status, btn) {
+    attendanceMap[studentId] = status;
+    // Update button states in this row
+    const row = document.getElementById('row-' + studentId);
+    row.querySelectorAll('.att-btn').forEach(b => {
+      b.className = b.className.replace(/active-\w+/g, '').trim();
+    });
+    btn.classList.add('active-' + status.toLowerCase());
+    document.getElementById('status-' + studentId).innerHTML = statusBadge(status);
+    // Update stat counts
+    updateStatCounts();
+  }
+
+  function updateStatCounts() {
+    const vals = Object.values(attendanceMap);
+    document.getElementById('stat-present').textContent = vals.filter(v => v === 'Present').length;
+    document.getElementById('stat-absent').textContent  = vals.filter(v => v === 'Absent').length;
+    document.getElementById('stat-leave').textContent   = vals.filter(v => v === 'Leave').length;
+  }
+
+  function markAll(status) {
+    students.forEach(s => {
+      attendanceMap[s.id] = status;
+      const row = document.getElementById('row-' + s.id);
+      if (!row) return;
+      row.querySelectorAll('.att-btn').forEach(b => b.className = b.className.replace(/active-\w+/g, '').trim());
+      const btn = row.querySelector('.att-btn.' + status.toLowerCase());
+      if (btn) btn.classList.add('active-' + status.toLowerCase());
+      document.getElementById('status-' + s.id).innerHTML = statusBadge(status);
+    });
+    updateStatCounts();
+  }
+
+  async function saveAllAttendance() {
+    const date = document.getElementById('att-date').value;
+    if (!date) return showToast('Please select a date', 'error');
+    const entries = Object.entries(attendanceMap);
+    if (!entries.length) return showToast('No attendance marked', 'error');
+    try {
+      for (const [studentId, status] of entries) {
+        await apiCall('/attendance/mark', 'POST', { studentId, date, status });
+      }
+      showToast('Attendance saved successfully!');
+    } catch(e) { showToast('Error saving attendance', 'error'); }
+  }
+
+  loadAttendance();
+</script>
+</body>
+</html>
