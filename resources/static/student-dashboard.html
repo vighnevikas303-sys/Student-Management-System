@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Dashboard - SMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a class="navbar-brand" href="student-dashboard.html">Student <span>Portal</span></a>
+  <ul class="nav-links">
+    <li><a href="student-dashboard.html" class="active">My Profile</a></li>
+    <li><a href="student-attendance.html">My Attendance</a></li>
+    <li><a href="student-marks.html">My Marks</a></li>
+    <li><a href="student-fee.html">My Fee</a></li>
+    <li><div id="navbar-user" style="display:inline-flex;align-items:center;"></div></li>
+    <li><button class="btn-logout" onclick="doLogout()">Logout</button></li>
+  </ul>
+</nav>
+
+<div class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">My Profile</div>
+      <div class="breadcrumb">Student Portal &rsaquo; My Profile</div>
+    </div>
+  </div>
+
+  <div id="profile-content"><div class="spinner"></div></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="auth.js"></script>
+<script>
+let currentUser = null;
+
+async function init() {
+  // Only students allowed
+  currentUser = await requireRole('STUDENT');
+  if (!currentUser) return;
+
+  renderNavbar(currentUser);
+  loadMyProfile();
+}
+
+async function loadMyProfile() {
+  if (!currentUser.studentId) {
+    document.getElementById('profile-content').innerHTML =
+      '<div class="empty-state">Your student record is not linked yet. Contact admin.</div>';
+    return;
+  }
+  try {
+    const s = await apiCall('/students/' + currentUser.studentId);
+    document.getElementById('profile-content').innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">My Student Profile</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;font-size:14px">
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">FULL NAME</p>
+            <p style="font-weight:600;font-size:16px">${s.firstName} ${s.lastName}</p>
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">ROLL NUMBER</p>
+            <p style="font-weight:600">${s.rollNumber || '-'}</p>
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">EMAIL</p>
+            <p>${s.email || '-'}</p>
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">PHONE</p>
+            <p>${s.phone || '-'}</p>
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">COURSE</p>
+            <p>${s.course || '-'}</p>
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">CLASS</p>
+            <p>${s.className || '-'}</p>
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">SEMESTER</p>
+            <p>${s.semester || '-'}</p>
+          </div>
+          <div>
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">STATUS</p>
+            <p>${statusBadge(s.status || 'Active')}</p>
+          </div>
+          <div style="grid-column:1/-1">
+            <p style="color:#64748b;font-size:12px;margin-bottom:4px">ADDRESS</p>
+            <p>${s.address || '-'}</p>
+          </div>
+        </div>
+      </div>
+      <!-- Quick Links -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px">
+        <a href="student-attendance.html" class="card" style="text-decoration:none;text-align:center;padding:24px;transition:transform 0.2s" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:28px;margin-bottom:8px">📋</div>
+          <div style="font-weight:600;color:#1e293b">My Attendance</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px">View attendance records</div>
+        </a>
+        <a href="student-marks.html" class="card" style="text-decoration:none;text-align:center;padding:24px;transition:transform 0.2s" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:28px;margin-bottom:8px">📊</div>
+          <div style="font-weight:600;color:#1e293b">My Marks</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px">View results and grades</div>
+        </a>
+        <a href="student-fee.html" class="card" style="text-decoration:none;text-align:center;padding:24px;transition:transform 0.2s" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
+          <div style="font-size:28px;margin-bottom:8px">💰</div>
+          <div style="font-weight:600;color:#1e293b">My Fee</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px">Check payment status</div>
+        </a>
+      </div>`;
+  } catch(e) {
+    showToast('Error loading profile', 'error');
+  }
+}
+
+init();
+</script>
+</body>
+</html>

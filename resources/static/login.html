@@ -3,127 +3,155 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Login - SMS</title>
+<title>Login - Student Management System</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family:'Inter',sans-serif; background:#eff6ff; min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; }
-  .card { background:#fff; border-radius:16px; box-shadow:0 4px 24px rgba(30,64,175,0.10); padding:40px 44px; width:420px; }
+  body { font-family:'Inter',sans-serif; background:linear-gradient(135deg,#1e40af 0%,#1d4ed8 50%,#2563eb 100%); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .login-wrapper { display:flex; gap:40px; align-items:center; padding:20px; }
+  .login-info { color:#fff; max-width:320px; }
+  .login-info h1 { font-family:'Poppins',sans-serif; font-size:26px; font-weight:700; margin-bottom:10px; }
+  .login-info p  { font-size:14px; color:#bfdbfe; margin-bottom:24px; line-height:1.6; }
+  .role-info { background:rgba(255,255,255,0.1); border-radius:10px; padding:16px; }
+  .role-item { display:flex; align-items:center; gap:10px; margin-bottom:10px; font-size:13px; color:#e0f2fe; }
+  .role-item:last-child { margin-bottom:0; }
+  .role-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .dot-admin   { background:#fbbf24; }
+  .dot-teacher { background:#34d399; }
+  .dot-student { background:#60a5fa; }
+
+  .card { background:#fff; border-radius:20px; padding:40px 44px; width:420px; box-shadow:0 20px 60px rgba(0,0,0,0.2); }
   .brand { text-align:center; margin-bottom:28px; }
-  .brand-icon { width:52px; height:52px; background:#1e40af; border-radius:12px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
-  .brand-icon span { color:#fff; font-size:22px; font-weight:700; font-family:'Poppins',sans-serif; }
-  .brand h1 { font-family:'Poppins',sans-serif; font-size:18px; font-weight:700; color:#1e293b; }
-  .brand p  { font-size:13px; color:#64748b; margin-top:4px; }
-  .form-group { margin-bottom:18px; }
+  .brand-icon { width:56px; height:56px; background:#1e40af; border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
+  .brand-icon span { color:#fff; font-size:24px; font-weight:700; font-family:'Poppins',sans-serif; }
+  .brand h2 { font-family:'Poppins',sans-serif; font-size:18px; font-weight:700; color:#1e293b; }
+  .brand p  { font-size:13px; color:#64748b; margin-top:3px; }
+
+  .form-group { margin-bottom:16px; }
   label { font-size:13px; font-weight:500; color:#374151; display:block; margin-bottom:6px; }
-  input, select { width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:'Inter',sans-serif; color:#1e293b; background:#f8fafc; outline:none; transition:border 0.2s; }
+  input, select { width:100%; padding:11px 14px; border:1.5px solid #e2e8f0; border-radius:8px; font-size:14px; font-family:'Inter',sans-serif; color:#1e293b; background:#f8fafc; outline:none; transition:border 0.2s; }
   input:focus, select:focus { border-color:#3b82f6; background:#fff; }
-  .btn-login { width:100%; padding:12px; background:#1e40af; color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:600; font-family:'Poppins',sans-serif; cursor:pointer; margin-top:4px; transition:background 0.2s; }
+
+  .error-msg { background:#fee2e2; color:#b91c1c; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:14px; display:none; border-left:3px solid #dc2626; }
+  .error-msg.show { display:block; }
+
+  .btn-login { width:100%; padding:13px; background:#1e40af; color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:600; font-family:'Poppins',sans-serif; cursor:pointer; transition:background 0.2s; margin-top:4px; }
   .btn-login:hover { background:#1d4ed8; }
   .btn-login:disabled { background:#93c5fd; cursor:not-allowed; }
-  .error-msg { background:#fee2e2; color:#b91c1c; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; display:none; border-left:3px solid #b91c1c; }
-  .loading-msg { background:#dbeafe; color:#1e40af; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:16px; display:none; text-align:center; }
-  footer { color:#94a3b8; font-size:12px; margin-top:24px; }
+
+  .demo-creds { margin-top:20px; padding:14px; background:#f8fafc; border-radius:8px; border:1px dashed #cbd5e1; }
+  .demo-title { font-size:12px; font-weight:600; color:#64748b; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; }
+  .demo-item { font-size:12px; color:#475569; margin-bottom:4px; }
+  .demo-item:last-child { margin-bottom:0; }
+  .demo-item strong { color:#1e293b; }
+
+  footer { position:fixed; bottom:16px; color:rgba(255,255,255,0.6); font-size:12px; text-align:center; width:100%; }
 </style>
 </head>
 <body>
+
+<div class="login-wrapper">
+  <!-- Left info panel -->
+  <div class="login-info">
+    <h1>Student Management System</h1>
+    <p>A complete digital solution for managing students, attendance, marks, and fee records.</p>
+    <div class="role-info">
+      <div class="role-item"><div class="role-dot dot-admin"></div><span><strong>Admin</strong> — Full access to all modules</span></div>
+      <div class="role-item"><div class="role-dot dot-teacher"></div><span><strong>Teacher</strong> — Attendance management only</span></div>
+      <div class="role-item"><div class="role-dot dot-student"></div><span><strong>Student</strong> — View own records only</span></div>
+    </div>
+  </div>
+
+  <!-- Login card -->
   <div class="card">
     <div class="brand">
       <div class="brand-icon"><span>S</span></div>
-      <h1>Student Management System</h1>
+      <h2>Welcome Back</h2>
       <p>Sign in to your account</p>
     </div>
 
-    <!-- Error Message -->
     <div class="error-msg" id="error-msg">Invalid username or password.</div>
-
-    <!-- Loading Message -->
-    <div class="loading-msg" id="loading-msg">Signing in please wait...</div>
 
     <div class="form-group">
       <label>Username</label>
-      <input type="text" id="username" placeholder="Enter username" value="admin">
+      <input type="text" id="username" placeholder="Enter your username">
     </div>
     <div class="form-group">
       <label>Password</label>
-      <input type="password" id="password" placeholder="Enter password" value="admin123">
+      <input type="password" id="password" placeholder="Enter your password">
     </div>
-    <div class="form-group">
-      <label>Login As</label>
-      <select id="role">
-        <option>Admin</option>
-        <option>Teacher</option>
-        <option>Student</option>
-      </select>
-    </div>
+
     <button class="btn-login" id="login-btn" onclick="doLogin()">Sign In</button>
+
+    <!-- Demo credentials -->
+    <div class="demo-creds">
+      <div class="demo-title">Demo Credentials</div>
+      <div class="demo-item"> Admin: <strong>admin</strong> / <strong>admin123</strong></div>
+      <div class="demo-item">Teacher: <strong>teacher1</strong> / <strong>teacher123</strong></div>
+      <div class="demo-item"> Student: <strong>student1</strong> / <strong>student123</strong></div>
+    </div>
   </div>
-  <footer>&copy; 2026 Student Management System</footer>
+</div>
+
+
 
 <script>
-  async function doLogin() {
-    const u = document.getElementById('username').value.trim();
-    const p = document.getElementById('password').value.trim();
+async function doLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const errMsg   = document.getElementById('error-msg');
+  const btn      = document.getElementById('login-btn');
 
-    document.getElementById('error-msg').style.display  = 'none';
-    document.getElementById('loading-msg').style.display = 'none';
-
-    // Basic validation
-    if (!u || !p) {
-      document.getElementById('error-msg').textContent   = 'Please enter username and password.';
-      document.getElementById('error-msg').style.display = 'block';
-      return;
-    }
-
-    document.getElementById('loading-msg').style.display = 'block';
-    document.getElementById('login-btn').disabled        = true;
-
-    try {
-      const credentials = btoa(u + ':' + p);
-
-      const res = await fetch('http://localhost:8081/api/students', {
-        method: 'GET',
-        headers: {
-          'Authorization': 'Basic ' + credentials,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (res.ok) {
-        sessionStorage.setItem('sms-user', JSON.stringify({
-          username: u,
-          password: p,
-          role: document.getElementById('role').value
-        }));
-
-        window.location.href = 'index.html';
-
-      } else if (res.status === 401) {
-        document.getElementById('error-msg').textContent   = 'Invalid username or password.';
-        document.getElementById('error-msg').style.display = 'block';
-
-      } else {
-        document.getElementById('error-msg').textContent   = 'Something went wrong. Try again.';
-        document.getElementById('error-msg').style.display = 'block';
-      }
-
-    } catch (e) {
-      document.getElementById('error-msg').textContent   = 'Cannot connect to server. Make sure Spring Boot is running.';
-      document.getElementById('error-msg').style.display = 'block';
-
-    } finally {
-      document.getElementById('loading-msg').style.display = 'none';
-      document.getElementById('login-btn').disabled        = false;
-    }
+  if (!username || !password) {
+    errMsg.textContent = 'Please enter username and password.';
+    errMsg.classList.add('show');
+    return;
   }
 
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
+  btn.disabled = true;
+  btn.textContent = 'Signing in...';
+  errMsg.classList.remove('show');
 
-  if (sessionStorage.getItem('sms-user')) {
-    window.location.href = 'index.html';
+  try {
+    // Spring Security form login expects form data
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('password', password);
+
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      body: new URLSearchParams({ username, password }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      credentials: 'include'
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      // Store user info in sessionStorage
+      sessionStorage.setItem('sms-user', JSON.stringify({
+        username: data.username,
+        role:     data.role
+      }));
+      // Redirect based on role
+      if (data.role === 'ADMIN')        window.location.href = 'index.html';
+      else if (data.role === 'TEACHER') window.location.href = 'attendance.html';
+      else if (data.role === 'STUDENT') window.location.href = 'student-dashboard.html';
+      else window.location.href = 'index.html';
+    } else {
+      errMsg.textContent = data.message || 'Invalid credentials';
+      errMsg.classList.add('show');
+    }
+  } catch(e) {
+    errMsg.textContent = 'Server error. Make sure Spring Boot is running.';
+    errMsg.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Sign In';
   }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 </script>
 </body>
 </html>

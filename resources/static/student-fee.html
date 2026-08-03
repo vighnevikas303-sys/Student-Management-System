@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Fee - SMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<nav class="navbar">
+  <a class="navbar-brand" href="student-dashboard.html">Student <span>Portal</span></a>
+  <ul class="nav-links">
+    <li><a href="student-dashboard.html">My Profile</a></li>
+    <li><a href="student-attendance.html">My Attendance</a></li>
+    <li><a href="student-marks.html">My Marks</a></li>
+    <li><a href="student-fee.html" class="active">My Fee</a></li>
+    <li><div id="navbar-user" style="display:inline-flex;align-items:center;"></div></li>
+    <li><button class="btn-logout" onclick="doLogout()">Logout</button></li>
+  </ul>
+</nav>
+<div class="main">
+  <div class="page-header">
+    <div>
+      <div class="page-title">My Fee</div>
+      <div class="breadcrumb">Student Portal &rsaquo; My Fee</div>
+    </div>
+  </div>
+  <div class="stats-grid">
+    <div class="stat-card blue">
+      <div class="stat-label">Total Fee</div>
+      <div class="stat-value" id="stat-total" style="font-size:20px">--</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Paid Amount</div>
+      <div class="stat-value" id="stat-paid" style="font-size:20px">--</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Balance</div>
+      <div class="stat-value" id="stat-balance" style="font-size:20px">--</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Status</div>
+      <div class="stat-value" id="stat-status" style="font-size:16px">--</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Fee Details</span>
+    </div>
+    <div id="fee-table"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+<script src="auth.js"></script>
+<script>
+async function init() {
+  const user = await requireRole('STUDENT');
+  if (!user) return;
+  renderNavbar(user);
+  if (!user.studentId) {
+    document.getElementById('fee-table').innerHTML =
+      '<div class="empty-state">Student record not linked. Contact admin.</div>';
+    return;
+  }
+  try {
+    const data = await apiCall('/fee/student/' + user.studentId);
+    if (data.length) {
+      const f = data[0];
+      document.getElementById('stat-total').textContent   = formatCurrency(f.totalAmount);
+      document.getElementById('stat-paid').textContent    = formatCurrency(f.paidAmount);
+      document.getElementById('stat-balance').textContent = formatCurrency(f.balance);
+      document.getElementById('stat-status').innerHTML    = statusBadge(f.status);
+    }
+    document.getElementById('fee-table').innerHTML = data.length ? `
+      <table>
+        <thead><tr>
+          <th>Academic Year</th><th>Total Fee</th>
+          <th>Paid</th><th>Balance</th><th>Due Date</th><th>Status</th>
+        </tr></thead>
+        <tbody>
+          ${data.map(f => `
+            <tr>
+              <td>${f.academicYear || '-'}</td>
+              <td>${formatCurrency(f.totalAmount)}</td>
+              <td>${formatCurrency(f.paidAmount)}</td>
+              <td><strong style="color:${f.balance>0?'#b91c1c':'#15803d'}">${formatCurrency(f.balance)}</strong></td>
+              <td>${f.dueDate || '-'}</td>
+              <td>${statusBadge(f.status)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>` : '<div class="empty-state">No fee records found.</div>';
+  } catch(e) { showToast('Error loading fee', 'error'); }
+}
+init();
+</script>
+</body>
+</html>
